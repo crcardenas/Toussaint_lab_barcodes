@@ -1,22 +1,48 @@
-# complete mitochondrial genome recovery
+# mitochondrial barcode recovery
+
+## Data preperation
 Get reference database for Carabidae
+
+can install or use conda environment. To install, you will need X version
+Alternatively, you can use an already installed version.
+e.g.,
+
+```
+source /local/anaconda3/bin/activate 
+conda activate /home/cody/.conda/envs/sratoolkit
+```
+
+Once you've installed or are using an already installed version you need to get your barcodes like so: 
 
 ```
 conda activate sratoolkit
-esearch -db nuccore -query "\"mitochondrion\"[All Fields] AND (Carabidae[Organism]) AND (refseq[filter] AND mitochondrion[filter] AND (\"10000\"[SLEN] : \"20000\"[SLEN]))" | efetch -format gbwithparts > reference.gb
-
-esearch -db nuccore -query "\"mitochondrion\"[All Fields] AND (Carabidae[Organism]) AND (refseq[filter] AND mitochondrion[filter] AND (\"10000\"[SLEN] : \"20000\"[SLEN]))" | efetch -format fasta > reference.fasta
-
 esearch -db nuccore -query "barcode (Carabidae[Organism]) 658[SLEN]" | efetch -format fasta > barcode.fasta
 ```
+This can take a little while depending on the number of barcodes.
 
-summarize barcodes
-
+Clean up barcodes with any gaps using awk
 ```
-conda activate seqkit
-seqkit stats -T seqkit stats -T barcode_results/*.fasta > barcode.stats
+# record which sequences are excluded
+awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=0; next} $0~/[Nn-]/{p=1} {r=r $0 ORS} END{if(p)printf "%s",r}' barcode.fasta > barcode_gaps.fasta
+# now exclude
+awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=1; next} $0~/[Nn-]/{p=0} {r=r $0 ORS} END{if(p)printf "%s",r}' barcode.fasta > tmp.fasta
+# identify taxnomic uncertainty
+awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0~/(Carabidae|Coleoptera) sp\./); next} {r=r $0 ORS} END{if(p)printf "%s",r}' tmp.fasta > barcode_taxanomic_uncertainty.fasta
+# final clean script
+awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0!~/(Carabidae|Coleoptera) sp\./); next} {r=r $0 ORS} END{if(p)printf "%s",r}' tmp.fasta > barcode_clean.fasta
 ```
 
+now  generate a barcode genbank file; this one can take a few hours. I recommend writing a shell script and running it with nohup
+```
+for LIST in $(cat accessions.list); do
+esearch -db nuccore -query ${LIST} | efetch -format gbwithparts > ./tmp/${LIST}.gb;
+done
+cat tmp/*.gb > barcode_clean.gb
+```
+
+Your reference barcode files should now be ready.
+
+## process sample lists:
 
 get all samples and their associated libraries:
 
@@ -24,14 +50,16 @@ get all samples and their associated libraries:
 awk 'FNR==1{lib=FILENAME;sub(/_IDs\.list$/,"",lib)}{print lib "," $1}' *_IDs.list > samples.list
 ```
 
-need to ensure the gene name is consistent!
+
+In the genbank file, we need to ensure the gene name is consistent!
 
 grep "/gene="COX1"
 should be "/gene="CO1"
-(or vise versa ALL genes should be identically named!)
+(or vise versa, either way all of the genes should be identically named!)
 
 
-Of the software, what identified what?
+
+## concatenate your identified mitochondrial barcodes
 
 mitofinder
 ```
@@ -43,10 +71,13 @@ get organelle
 find ./*_barcode/*_getorganelle  -name '*.path_sequence.fasta' -print > GO_results.list
 ```
 
-these rilfes have a path to the directory of barcode results:
+### Create a symlink to the files
+
+these files have a path to the directory of barcode results like:
+```
 ./CBX2470_barcode/CBX2470_getorganelle/anonym.K85.scaffolds.graph1.1.path_sequence.fasta
 ./CBX0304_barcode/CBX0304_barcode_MitoFinder_mitfi_Final_Results/CBX0304_barcode_final_genes_NT.fasta
-
+```
 we can use these paths to create a symlink those results
 ```
 mkdir barcode_results
@@ -63,28 +94,5 @@ for SOFTWARE in GO MF; do
     done < ${SOFTWARE}_results.list;
 done
 ```
-
-
-Clean up barcodes with any gaps using awk
-```
-# record which sequences are excluded
-awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=0; next} $0~/[Nn-]/{p=1} {r=r $0 ORS} END{if(p)printf "%s",r}' barcode.fasta > barcode_gaps.fasta
-# now exclude
-awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=1; next} $0~/[Nn-]/{p=0} {r=r $0 ORS} END{if(p)printf "%s",r}' barcode.fasta > tmp.fasta
-# identify taxnomic uncertainty
-awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0~/(Carabidae|Coleoptera) sp\./); next} {r=r $0 ORS} END{if(p)printf "%s",r}' tmp.fasta > barcode_taxanomic_uncertainty.fasta
-# final clean script
-awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0!~/(Carabidae|Coleoptera) sp\./); next} {r=r $0 ORS} END{if(p)printf "%s",r}' tmp.fasta > barcode_clean.fasta
-```
-
-now  generate a barcode genbank file
-```
-for LIST in $(cat accessions.list); do
-esearch -db nuccore -query ${LIST} | efetch -format gbwithparts > ./tmp/${LIST}.gb;
-done
-cat tmp/*.gb > barcode_clean.gb
-```
-
-the barcode_clean.gb is an experiment to use in mitofinder
 
 
