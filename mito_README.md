@@ -12,10 +12,12 @@ source /local/anaconda3/bin/activate
 conda activate /home/cody/.conda/envs/sratoolkit
 ```
 
-Once you've installed or are using an already installed version you need to get your barcodes like so: 
+Once you've installed or are using an already installed version you need to get your reference genomes and mitochondrial barcodes like so: 
 
 ```
 conda activate sratoolkit
+esearch -db nuccore -query "\"mitochondrion\"[All Fields] AND (\"Carabidae\"[Organism]) AND (refseq[filter] AND mitochondrion[filter] AND (\"12000\"[SLEN] : \"20000\"[SLEN]))" | efetch -format gbwithparts > reference.gb
+esearch -db nuccore -query "\"mitochondrion\"[All Fields] AND (\"Carabidae\"[Organism]) AND (refseq[filter] AND mitochondrion[filter] AND (\"12000\"[SLEN] : \"20000\"[SLEN]))" | efetch -format fasta > reference.fasta
 esearch -db nuccore -query "barcode (Carabidae[Organism]) 658[SLEN]" | efetch -format fasta > barcode.fasta
 ```
 This can take a little while depending on the number of barcodes.
