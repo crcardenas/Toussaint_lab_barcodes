@@ -2,12 +2,11 @@
 ###########################################################################
 # Toussaint lab QC and assemble data on pyrgus
 # Cody Raul Cardenas; v2026.02
-# this script identifies mitochondrial barcodes using mitofinder and 
-# getorganelle; to revert the mitochondrial recovery in this pipeline you
-# only need to call the appropriate reference database
-# these are generated from NCBI data using a command like:
+# this script identifies mitochondrial genomes using mitofinder and 
+# getorganelle; refernces are generated from NCBI data using a command
+# like:
 # esearch -db nuccore -query "" | efetch -format fasta > reference.fasta
-# or 
+# and/or 
 # esearch -db nuccore -query "" efetch -format gbwithparts > reference.gb
 # It expects your sequence files to have been assembled using the
 # 0_QC_assembly.sh script
@@ -36,22 +35,21 @@ conda activate /home/cody/.conda/envs/singularity
 # Gaedephaga_lib3,CBX1731
 # ...
 
-WORKING=/data/work/Toussaint_UCE/2_BARCODES # singularity requires explicit paths, no symlinks!
+WORKING="/data/work/Toussaint_UCE/TEST_BARCODES" # singularity requires explicit paths, no symlinks!
 while read LIST; do
     SAMP=$(echo ${LIST} | cut -d "," -f 2)
     LIB=$(echo ${LIST} | cut -d "," -f 1)
-    DATAPATH=/data/work/Toussaint_UCE/1_ASSEMBLED/${LIB}/spades/${SAMP} # from list
+    DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/spades/${SAMP} # from list
     REFPATH=${WORKING} # where the .gb files live
 
     singularity run -B ${DATAPATH}:${DATAPATH},${REFPATH}:${REFPATH} \
         ${WORKING}/mitofinder_v1.4.2.sif \
-        -j ${SAMP}_barcode \
-        -r ${REFPATH}/barcode_clean.gb \
+        -j ${SAMP}_MF \
+        -r ${REFPATH}/reference.gb \
         -a ${DATAPATH}/contigs.fasta \
         -o 5 \
         -p ${CORES} \
-        --rename-contig no \
-        --new-genes;
+        --rename-contig no;
 done < ${WORKING}/samples.list
 
 
@@ -63,17 +61,19 @@ WORKING=/data/work/Toussaint_UCE
 while read LIST; do
     SAMP=$(echo ${LIST} | cut -d "," -f 2)
     LIB=$(echo ${LIST} | cut -d "," -f 1)
-    DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/trimmed
-    REFPATH=${WORKING}
-
+    DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/spades/${SAMP} # from list
+    REFPATH=${WORKING} # where the .gb files live
+    
+    # removed this flag, it seems useful for barcodes rather than whole mtDNA genomes
+    #   --max-extending-len 100 \ 
     get_organelle_from_reads.py \
         -1 ${DATAPATH}/${SAMP}_r1.fastq.gz \
         -2 ${DATAPATH}/${SAMP}_r2.fastq.gz \
-        --max-extending-len 100 \
-        -o ${SAMP}_barcode/${SAMP}_getorganelle \
+        -o ${SAMP}_GO/ \
         -P 0 \
         -F anonym \
-        -s ${REFPATH}/2_BARCODES/barcode_clean.fasta \
-        --genes ${REFPATH}/2_BARCODES/barcode_clean.fasta \
+        -s ${REFPATH}/reference.fasta \
+        --genes ${REFPATH}/reference.fasta \
+        --expected-max-size 20000 \
         -t ${CORES};
-done < ${WORKING}/2_BARCODES/samples.list
+done < ${WORKING}/samples.list
