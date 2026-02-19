@@ -34,20 +34,7 @@ awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0~/(Carabidae|Coleoptera) sp\.
 awk '/^>/{if(NR>1&&p)printf "%s",r; r=$0 ORS; p=($0!~/(Carabidae|Coleoptera) sp\./); next} {r=r $0 ORS} END{if(p)printf "%s",r}' tmp.fasta > barcode_clean.fasta
 ```
 
-!! generate accession list script
-```
-grep ">" barcode_clean.fasta | cut -d " " -f 1 | sed 's/>//' > accession.list
-```
-
-now  generate a barcode genbank file; this one can take a few hours. I recommend writing a shell script and running it with nohup
-```
-for LIST in $(cat accessions.list); do
-esearch -db nuccore -query ${LIST} | efetch -format gbwithparts > ./tmp/${LIST}.gb;
-done
-cat tmp/*.gb > barcode_clean.gb
-```
-
-Your reference barcode files should now be ready.
+Your reference and barcode files should now be ready.
 
 ## process sample lists:
 
