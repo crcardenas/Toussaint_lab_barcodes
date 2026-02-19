@@ -4,7 +4,7 @@
 Get reference database for Carabidae
 
 can install or use conda environment. To install, you will need X version
-Alternatively, you can use an already installed version.
+Alternatively, you can use an already installed version in your scripts
 e.g.,
 
 ```
@@ -46,50 +46,38 @@ get all samples and their associated libraries:
 ```
 awk 'FNR==1{lib=FILENAME;sub(/_IDs\.list$/,"",lib)}{print lib "," $1}' *_IDs.list > samples.list
 ```
+run the `2_mito.sh script`
 
+### Isolate mtDNA barcodes
 
-In the genbank file, we need to ensure the gene name is consistent!
-
-grep "/gene="COX1"
-should be "/gene="CO1"
-(or vise versa, either way all of the genes should be identically named!)
-
-
-
-## concatenate your identified mitochondrial barcodes
-
-mitofinder
+once run is complete, move the data into the appropriate directory and create a symlink like so:
 ```
-find ./*_barcode/*_barcode_MitoFinder_mitfi_Final_Results/ -name '*_barcode_final_genes_NT.fasta' -print > MF_results.list
-```
+make symlink
+mkdir 2_MTDATA/mtGENOME
+mv CBX*GO/ 2_MTDNA/ && mv CBX*MF/ 2_MTDNA/
 
-get organelle
-```
-find ./*_barcode/*_getorganelle  -name '*.path_sequence.fasta' -print > GO_results.list
-```
+find ./2_MTDNA/*_MF/*_MitoFinder_mitfi_Final_Results/ -name '*_final_genes_NT.fasta' -print > MF_results.list
+find ./2_MTDNA/*_GO/  -name '*.path_sequence.fasta' -print > GO_results.list
 
-### Create a symlink to the files
+mkdir 3_BARCODES
 
-these files have a path to the directory of barcode results like:
-```
-./CBX2470_barcode/CBX2470_getorganelle/anonym.K85.scaffolds.graph1.1.path_sequence.fasta
-./CBX0304_barcode/CBX0304_barcode_MitoFinder_mitfi_Final_Results/CBX0304_barcode_final_genes_NT.fasta
-```
-we can use these paths to create a symlink those results
-```
-mkdir barcode_results
-
-for SOFTWARE in GO MF; do
+for SOFTWARE in MF GO; do
     while read LIST; do
-        # extract sample ID
-        SAMPLE_ID=$(echo ${LIST} | cut -d "/" -f 2 | cut -d "_" -f 1)
-        # clean up the leading fasta file path
-        BARCODE=$(echo ${LIST} | sed 's|.\/||')
-        # always use an explicit path with symlinks, its safer
-        WORKING="/data/work/Toussaint_UCE/2_BARCODES"
-        ln -s ${WORKING}/${BARCODE} ${WORKING}/barcode_results/${SAMPLE_ID}_${SOFTWARE}_barcode.fasta
+        # extract sample ID; adjust cut for subdirectory structure
+        SAMPLE_ID=$(echo ${LIST} | cut -d "/" -f 3 | cut -d "_" -f 1)
+        # clean up the leading fasta file path for use as a variable
+        mtFASTA=$(echo ${LIST} | sed 's|.\/||')
+        # always use an explicit path with symlinks
+        WORKING="/data/work/Toussaint_UCE/TEST_BARCODES"
+        ln -s ${WORKING}/${mtFASTA} ${WORKING}/3_BARCODES/${SAMPLE_ID}_${SOFTWARE}_mtGEN.fasta
     done < ${SOFTWARE}_results.list;
 done
 ```
+
+Once symlinked, blast the samples mtDNA generated with the respective methods using the barcode database.
+```
+nohup bash 3_blasnt.sh > 3_blastn_20260219.out &!
+```
+
 
 
