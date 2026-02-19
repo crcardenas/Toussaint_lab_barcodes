@@ -19,8 +19,6 @@
 #   !!!! be kind and leave resources available for others
 #   !!!! be sure to check the path to the list of samples
 ###########################################################################
-# KILL ME : [1] 4009
-# need to sort out singularity
 
 CORES=$1
 source /local/anaconda3/bin/activate 
@@ -35,8 +33,9 @@ conda activate /home/cody/.conda/envs/singularity
 # Gaedephaga_lib3,CBX1731
 # ...
 
-WORKING="/data/work/Toussaint_UCE/TEST_BARCODES" # singularity requires explicit paths, no symlinks!
+WORKING=/data/work/Toussaint_UCE/TEST_BARCODES # singularity requires explicit paths, no symlinks!
 while read LIST; do
+break
     SAMP=$(echo ${LIST} | cut -d "," -f 2)
     LIB=$(echo ${LIST} | cut -d "," -f 1)
     DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/spades/${SAMP} # from list
@@ -57,12 +56,12 @@ conda deactivate
 conda activate /home/cody/.conda/envs/assembly
 # getorganelle
 # basically the same process but comparing the two analyses will be useful
-WORKING=/data/work/Toussaint_UCE
+WORKING=/data/work/Toussaint_UCE/TEST_BARCODES
 while read LIST; do
     SAMP=$(echo ${LIST} | cut -d "," -f 2)
     LIB=$(echo ${LIST} | cut -d "," -f 1)
-    DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/spades/${SAMP} # from list
-    REFPATH=${WORKING} # where the .gb files live
+    DATAPATH=${WORKING}/1_ASSEMBLED/${LIB}/trimmed # from list
+    REFPATH=${WORKING}
     
     # removed this flag, it seems useful for barcodes rather than whole mtDNA genomes
     #   --max-extending-len 100 \ 
