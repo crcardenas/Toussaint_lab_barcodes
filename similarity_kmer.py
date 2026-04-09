@@ -118,8 +118,8 @@ def main():
         help="Concatenated FASTA file."
     )
     parser.add_argument(
-        "-k", "--kmer_size", type=int, default=15,
-        help="kmer size"
+        "-k", "--kmer_size", type=int, default=21,
+        help="kmer size, typical sizes used: 21, 33 and 55"
     )
     parser.add_argument(
         "-o", "--output", required=True,
